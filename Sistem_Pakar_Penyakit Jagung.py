@@ -1,7 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox, ttk
 
-# Define the diseases and symptoms
 diseases = {
     "P001": "Bulai",
     "P002": "Blight",
