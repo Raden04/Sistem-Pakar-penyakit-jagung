@@ -54,40 +54,86 @@ symptoms = {
 }
 
 def forward_chaining(selected_symptoms):
+    possible_diseases = []
     for disease, disease_symptoms in rules.items():
         match_count = sum(1 for symptom in selected_symptoms if symptom in disease_symptoms)
         if match_count >= 3:
-            return diseases[disease]
+            possible_diseases.append(diseases[disease])
+    if possible_diseases:
+        return ", ".join(possible_diseases)
     return "No disease matches the given symptoms"
+
+class ScrollableFrame(ttk.Frame):
+    def __init__(self, container, *args, **kwargs):
+        super().__init__(container, *args, **kwargs)
+        
+        canvas = tk.Canvas(self, borderwidth=0, background="#f7f7f7")
+        scrollbar = ttk.Scrollbar(self, orient="vertical", command=canvas.yview)
+        self.scrollable_frame = ttk.Frame(canvas)
+
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(
+                scrollregion=canvas.bbox("all")
+            )
+        )
+
+        canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
 
 class DiagnosisApp:
     def __init__(self, master):
         self.master = master
         master.title("Corn Disease Diagnosis System")
-        master.geometry("400x400")
+        master.geometry("500x600")
+        master.resizable(False, False)
         master.config(bg="#f7f7f7")
 
         self.selected_symptoms = []
         self.check_vars = {code: tk.BooleanVar() for code in symptoms.keys()}
 
-        title_label = tk.Label(master, text="Corn Disease Diagnosis", font=("Helvetica", 16, "bold"), bg="#f7f7f7")
-        title_label.pack(pady=10)
+        header_frame = tk.Frame(master, bg="#4CAF50")
+        header_frame.pack(fill='x')
 
-        instruction_label = tk.Label(master, text="Select the symptoms observed:", bg="#f7f7f7")
-        instruction_label.pack(pady=5)
+        title_label = tk.Label(header_frame, text="Corn Disease Diagnosis", font=("Helvetica", 18, "bold"), fg="white", bg="#4CAF50")
+        title_label.pack(pady=15)
 
-        symptom_frame = ttk.Frame(master)
-        symptom_frame.pack(pady=10)
+        instruction_frame = tk.Frame(master, bg="#f7f7f7")
+        instruction_frame.pack(pady=10, padx=20, fill='x')
 
-        for code, desc in symptoms.items():
-            chk = tk.Checkbutton(symptom_frame, text=desc, variable=self.check_vars[code], bg="#f7f7f7")
-            chk.pack(anchor='w')
+        instruction_label = tk.Label(instruction_frame, text="Select the symptoms observed:", font=("Helvetica", 12), bg="#f7f7f7")
+        instruction_label.pack(anchor='w')
 
-        diagnose_button = tk.Button(master, text="Diagnose", command=self.diagnose, bg="#4CAF50", fg="white", font=("Helvetica", 12))
-        diagnose_button.pack(pady=20)
+        symptoms_frame = ScrollableFrame(master)
+        symptoms_frame.pack(pady=10, padx=20, fill='both', expand=True)
 
-        reset_button = tk.Button(master, text="Reset", command=self.reset, bg="#f44336", fg="white", font=("Helvetica", 12))
-        reset_button.pack(pady=5)
+        for idx, (code, desc) in enumerate(symptoms.items(), start=1):
+            chk = tk.Checkbutton(symptoms_frame.scrollable_frame, text=f"{idx}. {desc}", variable=self.check_vars[code], bg="#f7f7f7", anchor='w', justify='left', wraplength=450, font=("Helvetica", 10))
+            chk.pack(anchor='w', pady=2)
+
+        buttons_frame = tk.Frame(master, bg="#f7f7f7")
+        buttons_frame.pack(pady=10)
+
+        diagnose_button = tk.Button(buttons_frame, text="Diagnose", command=self.diagnose, bg="#4CAF50", fg="white", font=("Helvetica", 12), width=15, height=2)
+        diagnose_button.grid(row=0, column=0, padx=10)
+
+        reset_button = tk.Button(buttons_frame, text="Reset", command=self.reset, bg="#f44336", fg="white", font=("Helvetica", 12), width=15, height=2)
+        reset_button.grid(row=0, column=1, padx=10)
+
+        result_frame = tk.Frame(master, bg="#f7f7f7")
+        result_frame.pack(pady=10, padx=20, fill='x')
+
+        self.result_label = tk.Label(result_frame, text="", bg="#f7f7f7", font=("Helvetica", 12, "bold"), fg="#333")
+        self.result_label.pack(anchor='w')
+
+        footer_frame = tk.Frame(master, bg="#f7f7f7")
+        footer_frame.pack(side='bottom', fill='x', pady=10)
+
+        footer_label = tk.Label(footer_frame, text="© 2024 Corn Disease Diagnosis System", font=("Helvetica", 8), bg="#f7f7f7", fg="#888")
+        footer_label.pack()
 
     def diagnose(self):
         self.selected_symptoms = [code for code, var in self.check_vars.items() if var.get()]
@@ -95,13 +141,14 @@ class DiagnosisApp:
         if not self.selected_symptoms:
             messagebox.showwarning("Warning", "No symptoms were selected. Cannot diagnose.")
             return
-        
+
         result = forward_chaining(self.selected_symptoms)
-        messagebox.showinfo("Diagnosis Result", result)
+        self.result_label.config(text=f"Diagnosis Result: {result}", fg="#4CAF50")
 
     def reset(self):
         for var in self.check_vars.values():
             var.set(False)
+        self.result_label.config(text="")
 
 if __name__ == "__main__":
     root = tk.Tk()
